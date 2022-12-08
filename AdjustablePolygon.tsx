@@ -17,11 +17,48 @@ interface Point {
   y: number;
 }
 
+interface MutablePoint {
+  x: SkiaMutableValue<number> | null;
+  y: SkiaMutableValue<number> | null;
+}
+
 export type CornerPosition =
   | 'top-left'
   | 'top-right'
   | 'bottom-right'
   | 'bottom-left';
+
+export type LinePosition = 'top' | 'right' | 'bottom' | 'left';
+
+// interface ActiveLine {
+//   pointOne: MutablePoint;
+//   pointTwo: MutablePoint;
+//   position: LinePosition;
+// }
+
+class ActiveCorner {
+  point: MutablePoint;
+  position: CornerPosition | null;
+  constructor() {
+    this.point = {
+      x: null,
+      y: null,
+    };
+
+    this.position = null;
+  }
+}
+
+class ActiveLine {
+  pointOne: ActiveCorner;
+  pointTwo: ActiveCorner;
+  position: LinePosition | null;
+  constructor() {
+    this.pointOne = new ActiveCorner();
+    this.pointTwo = new ActiveCorner();
+    this.position = null;
+  }
+}
 
 export interface InitialValues {
   topLeft: Point;
@@ -75,6 +112,7 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   touchArea = TOUCH_BUFFER.MEDIUM,
 }) => {
   const CIRCLE_COLOR = 'blue';
+  const LINE_COLOR = 'greenyellow';
 
   const topLeftX = useValue(topLeft.x);
   const topLeftY = useValue(topLeft.y);
@@ -95,11 +133,12 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
     return distance;
   };
 
-  let activeXPoint: SkiaMutableValue<number> | null = null;
-  let activeYPoint: SkiaMutableValue<number> | null = null;
-  let activePosition: CornerPosition | null = null;
+  /**
+   * Used to store the current active corner
+   */
+  let activeCorner = new ActiveCorner();
 
-  const coordPoint = (
+  const cornerPoint = (
     x: SkiaMutableValue<number>,
     y: SkiaMutableValue<number>,
     position: CornerPosition,
@@ -109,52 +148,61 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
     position,
   });
 
-  const allCoordPoints = () => [
-    coordPoint(topLeftX, topLeftY, 'top-left'),
-    coordPoint(topRightX, topRightY, 'top-right'),
-    coordPoint(bottomRightX, bottomRightY, 'bottom-right'),
-    coordPoint(bottomLeftX, bottomLeftY, 'bottom-left'),
+  const allCornerPoints = () => [
+    cornerPoint(topLeftX, topLeftY, 'top-left'),
+    cornerPoint(topRightX, topRightY, 'top-right'),
+    cornerPoint(bottomRightX, bottomRightY, 'bottom-right'),
+    cornerPoint(bottomLeftX, bottomLeftY, 'bottom-left'),
   ];
 
   const detectPoint = ({x, y}: TouchInfo) => {
-    for (let point of allCoordPoints()) {
+    for (let point of allCornerPoints()) {
       if (
         distanceBetweenTouchAndPoint(
           {x, y},
           {x: point.x.current, y: point.y.current},
         ) <= touchArea
       ) {
-        activeXPoint = point.x;
-        activeYPoint = point.y;
-        activePosition = point.position;
+        activeCorner.point.x = point.x;
+        activeCorner.point.y = point.y;
+        activeCorner.position = point.position;
+
         console.log(
           'DETECT POINT: ',
-          activeXPoint?.current,
-          activeYPoint?.current,
-          activePosition,
+          activeCorner.point.x?.current,
+          activeCorner.point.y?.current,
+          activeCorner.position,
         );
       }
     }
   };
 
   const movePoint = (touchInfo: ExtendedTouchInfo) => {
-    if (activeXPoint && activeYPoint) {
-      activeXPoint.current = touchInfo.x;
-      activeYPoint.current = touchInfo.y;
-      console.log('MOVE POINT: ', activeXPoint?.current, activeYPoint?.current);
+    if (activeCorner.point.x && activeCorner.point.y) {
+      activeCorner.point.x.current = touchInfo.x;
+      activeCorner.point.y.current = touchInfo.y;
+      console.log(
+        'MOVE POINT: ',
+        activeCorner.point.x?.current,
+        activeCorner.point.y?.current,
+      );
     }
   };
 
   const detachPoint = () => {
-    if (onCornerUpdate && activeXPoint && activeYPoint && activePosition) {
+    if (
+      onCornerUpdate &&
+      activeCorner.point.x &&
+      activeCorner.point.y &&
+      activeCorner.position
+    ) {
       onCornerUpdate(
-        {x: activeXPoint?.current, y: activeYPoint?.current},
-        activePosition,
+        {x: activeCorner.point.x.current, y: activeCorner.point.y.current},
+        activeCorner.position,
       );
       console.log('DETACHED POINT');
     }
-    activeXPoint = null;
-    activeYPoint = null;
+    activeCorner = new ActiveCorner();
   };
 
   const touchHandler = useTouchHandler({
