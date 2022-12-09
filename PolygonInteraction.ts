@@ -1,5 +1,5 @@
-import {Corner} from './Corner';
-import {Line} from './Line';
+import {Corner, DetachedCorner} from './Corner';
+import {DetachedLine, Line} from './Line';
 import {Point} from './Point';
 import {isDefined} from './helpers';
 
@@ -115,14 +115,6 @@ export class PolygonInteraction {
   }
 
   private pointInBetweenLine(point: Point, line: Line) {
-    console.log('LINE ****', line.position);
-    console.log(
-      'LINE POINT: ',
-      `(${line.pointOne.point.x?.current},  ${line.pointOne.point.y?.current})`,
-      `(${line.pointTwo.point?.x?.current}, ${line.pointTwo.point?.y?.current})`,
-    );
-    console.log('TOUCH POINT: ', point.x, point.y);
-
     /**
      * Point is in between in line if
      * 1. It satisfies the line equation or the cross product of two vectors forming the 3 points is zero
@@ -130,11 +122,11 @@ export class PolygonInteraction {
      * 3. y lies between the minimum and maximum y coordinates of the line
      */
 
-    const linePointOneX = line.pointOne.point.x?.current;
-    const linePointOneY = line.pointOne.point.y?.current;
+    const linePointOneX = line.cornerOne.point.x?.current;
+    const linePointOneY = line.cornerOne.point.y?.current;
 
-    const linePointTwoX = line.pointTwo.point.x?.current;
-    const linePointTwoY = line.pointTwo.point.y?.current;
+    const linePointTwoX = line.cornerTwo.point.x?.current;
+    const linePointTwoY = line.cornerTwo.point.y?.current;
 
     if (
       !isDefined(linePointOneX) ||
@@ -152,8 +144,6 @@ export class PolygonInteraction {
     const dYl = linePointTwoY - linePointOneY;
 
     const crossProduct = dX * dYl - dY * dXl;
-
-    console.log('cross', Math.abs(crossProduct));
 
     // if cross product is not close to zero then it is definitely not on the line
     if (Math.abs(crossProduct) > this.LINE_TOUCH_THRESHOLD) {
@@ -179,16 +169,15 @@ export class PolygonInteraction {
 
     for (let line of [top, right, bottom, left]) {
       if (this.pointInBetweenLine(point, line)) {
-        console.log('DETECTED LINE: ', line.position);
         this.activeLine = line;
         this.initialLineCorners = {
           pointOne: {
-            x: line.pointOne.point.x?.current ?? 0,
-            y: line.pointOne.point.y?.current ?? 0,
+            x: line.cornerOne.point.x?.current ?? 0,
+            y: line.cornerOne.point.y?.current ?? 0,
           },
           pointTwo: {
-            x: line.pointTwo.point.x?.current ?? 0,
-            y: line.pointTwo.point.y?.current ?? 0,
+            x: line.cornerTwo.point.x?.current ?? 0,
+            y: line.cornerTwo.point.y?.current ?? 0,
           },
         };
         return;
@@ -215,18 +204,13 @@ export class PolygonInteraction {
     ) {
       this.activeCorner.point.x.current = x;
       this.activeCorner.point.y.current = y;
-      console.log(
-        'MOVE POINT: ',
-        this.activeCorner.point.x?.current,
-        this.activeCorner.point.y?.current,
-      );
     }
   }
 
   moveLine(x: number, y: number) {
     // subtract the active displacement of touch from the initial position
-    const pointOne = this.activeLine.pointOne.point;
-    const pointTwo = this.activeLine.pointTwo.point;
+    const pointOne = this.activeLine.cornerOne.point;
+    const pointTwo = this.activeLine.cornerTwo.point;
     if (
       !this.initialTouchPosition ||
       !isDefined(pointOne.x) ||
@@ -240,15 +224,67 @@ export class PolygonInteraction {
     ) {
       return;
     }
-    // FIXME: get displacement not distance! we need negative value
     const {dx, dy} = this.getDxDy(this.initialTouchPosition, new Point(x, y));
-
-    console.log('displacement', dx, dy);
 
     pointOne.x.current = this.initialLineCorners.pointOne.x + dx;
     pointOne.y.current = this.initialLineCorners.pointOne.y + dy;
 
     pointTwo.x.current = this.initialLineCorners.pointTwo.x + dx;
     pointTwo.y.current = this.initialLineCorners.pointTwo.y + dy;
+  }
+
+  /**
+   * Detach
+   */
+  detachCorner(): DetachedCorner {
+    if (
+      isDefined(this.activeCorner.point.x) &&
+      isDefined(this.activeCorner.point.y) &&
+      isDefined(this.activeCorner.position)
+    ) {
+      return {
+        point: {
+          x: this.activeCorner.point.x.current,
+          y: this.activeCorner.point.y.current,
+        },
+        position: this.activeCorner.position,
+      };
+    } else {
+      throw new Error('Not a valid active corner to detach');
+    }
+  }
+
+  detachLine(): DetachedLine {
+    const cornerOne = this.activeLine.cornerOne;
+    const cornerTwo = this.activeLine.cornerTwo;
+    const position = this.activeLine.position;
+    if (
+      isDefined(cornerOne.point.x) &&
+      isDefined(cornerOne.point.y) &&
+      isDefined(cornerOne.position) &&
+      isDefined(cornerTwo.point.x) &&
+      isDefined(cornerTwo.point.y) &&
+      isDefined(cornerTwo.position) &&
+      isDefined(position)
+    ) {
+      return {
+        cornerOne: {
+          point: {
+            x: cornerOne.point.x?.current,
+            y: cornerTwo.point.y?.current,
+          },
+          position: cornerOne.position,
+        },
+        cornerTwo: {
+          point: {
+            x: cornerTwo.point.x?.current,
+            y: cornerTwo.point.y?.current,
+          },
+          position: cornerTwo.position,
+        },
+      };
+    } else {
+      throw new Error('No a valid active line to detach');
+    }
   }
 }

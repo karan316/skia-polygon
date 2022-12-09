@@ -14,7 +14,6 @@ import React from 'react';
 import {Corner, CornerPosition} from './Corner';
 import {Point} from './Point';
 import {PolygonInteraction} from './PolygonInteraction';
-import {isDefined} from './helpers';
 
 export interface InitialValues {
   topLeft: Point;
@@ -106,40 +105,26 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   const detach = () => {
     if (onCornerUpdate) {
       if (polygonInteraction.detectedCorner()) {
-        const x = polygonInteraction.activeCorner.point.x?.current;
-        const y = polygonInteraction.activeCorner.point.y?.current;
-
-        const position = polygonInteraction.activeCorner.position;
-        if (x && y && position) {
-          onCornerUpdate({x, y}, position);
+        try {
+          const {point, position} = polygonInteraction.detachCorner();
+          onCornerUpdate(point, position);
+        } catch (error) {
+          console.error(error);
         }
       } else if (polygonInteraction.detectedLine()) {
-        const pointOne = polygonInteraction.activeLine.pointOne;
-        const pointTwo = polygonInteraction.activeLine.pointTwo;
+        const {cornerOne, cornerTwo} = polygonInteraction.detachLine();
 
-        const x1 = pointOne.point.x?.current;
-        const y1 = pointOne.point.y?.current;
-        const p1 = pointOne.position;
-
-        const x2 = pointTwo.point.x?.current;
-        const y2 = pointTwo.point.y?.current;
-        const p2 = pointTwo.position;
-
-        if (
-          isDefined(x1) &&
-          isDefined(y1) &&
-          isDefined(p1) &&
-          isDefined(x2) &&
-          isDefined(y2) &&
-          isDefined(p2)
-        ) {
-          onCornerUpdate({x: x1, y: y1}, p1);
-          onCornerUpdate({x: x2, y: y2}, p2);
-        }
+        onCornerUpdate(
+          {x: cornerOne.point.x, y: cornerOne.point.y},
+          cornerOne.position,
+        );
+        onCornerUpdate(
+          {x: cornerTwo.point.x, y: cornerTwo.point.y},
+          cornerTwo.position,
+        );
       }
     }
     polygonInteraction.resetTouchPoints();
-    console.log('------------------------');
   };
 
   const touchHandler = useTouchHandler({

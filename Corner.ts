@@ -1,4 +1,5 @@
 import {SkiaMutableValue} from '@shopify/react-native-skia';
+import {Point} from './Point';
 
 export type CornerPosition =
   | 'top-left'
@@ -9,6 +10,11 @@ export type CornerPosition =
 export interface MutablePoint {
   x: SkiaMutableValue<number> | null;
   y: SkiaMutableValue<number> | null;
+}
+
+export interface DetachedCorner {
+  point: Point;
+  position: CornerPosition;
 }
 
 export class Corner {
