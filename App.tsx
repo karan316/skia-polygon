@@ -29,7 +29,7 @@ const App = () => {
   const handleCornerUpdate: CornerUpdateHandler = corner => {
     console.log(
       corner.position,
-      ' corner updated',
+      'corner updated',
       corner.point.x,
       corner.point.y,
     );
