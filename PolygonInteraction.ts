@@ -20,14 +20,18 @@ export class PolygonInteraction {
   initialTouchPosition: Point | null;
 
   /**
-   * Initial corner points
+   * Initial corner point values when a user drags the line to calculate new corners
    */
   initialLineCorners: {
     pointOne: Point | null;
     pointTwo: Point | null;
   };
 
+  /**
+   * Threshold for cross product to detect line touch (not pixel values)
+   */
   private LINE_TOUCH_THRESHOLD = 5000;
+
   constructor() {
     this.activeCorner = new Corner();
     this.activeLine = new Line();
@@ -60,17 +64,29 @@ export class PolygonInteraction {
     }
   }
 
-  getDxDy(from: Point, to: Point) {
+  /**
+   * Returns the displacement along the x and y axis
+   * @param from starting point
+   * @param to ending point
+   */
+  getDxDy(from: Point, to: Point): {dx: number; dy: number} {
     return {
       dx: to.x - from.x,
       dy: to.y - from.y,
     };
   }
 
+  /**
+   * Set the initial position of the touch value while dragging a line
+   * @param position
+   */
   setInitialTouchPosition(position: Point) {
     this.initialTouchPosition = position;
   }
 
+  /**
+   * Resets all tracked values
+   */
   resetTouchPoints() {
     this.activeCorner = new Corner();
     this.activeLine = new Line();
@@ -85,7 +101,12 @@ export class PolygonInteraction {
    * Detect
    */
 
-  // Corner
+  /**
+   * Detects a corner in the close proximity of the touch
+   * @param x - x coordinate of touch
+   * @param y - y coordinate of touch
+   * @param corners - current value of corners
+   */
   detectCorner = (x: number, y: number, corners: Corner[]) => {
     const TOUCH_AREA = Corner.TOUCH_BUFFER.MEDIUM;
     for (let corner of corners) {
@@ -103,7 +124,11 @@ export class PolygonInteraction {
     }
   };
 
-  // Line
+  /**
+   * Returns an array of lines given the corners
+   * @param corners - Current corners
+   * @returns Line[]
+   */
   private currentLines(corners: Corner[]) {
     const [topLeft, topRight, bottomRight, bottomLeft] = corners;
 
@@ -114,6 +139,12 @@ export class PolygonInteraction {
     return [top, right, bottom, left];
   }
 
+  /**
+   * Checks if a point lies in between a line
+   * @param point - Point
+   * @param line - Line
+   * @returns true if point lies in between the line, false otherwise
+   */
   private pointInBetweenLine(point: Point, line: Line) {
     /**
      * Point is in between in line if
@@ -162,6 +193,12 @@ export class PolygonInteraction {
     }
   }
 
+  /**
+   * Detects a line in the close proximity of the touch
+   * @param x - x coordinate of touch
+   * @param y - y coordinate of touch
+   * @param corners - current corners
+   */
   detectLine(x: number, y: number, corners: Corner[]) {
     const [top, right, bottom, left] = this.currentLines(corners);
 
@@ -186,17 +223,26 @@ export class PolygonInteraction {
   }
 
   /**
-   * Move
+   * Checks if a corner was detected
+   * @returns true if a corner was detected during the touch
    */
-
   detectedCorner() {
     return isDefined(this.activeCorner.position);
   }
 
+  /**
+   * Checks if a line was detected
+   * @returns true if a line was detected during the touch
+   */
   detectedLine() {
     return isDefined(this.activeLine.position);
   }
 
+  /**
+   * Moves the active corner to x,y
+   * @param x - new x position
+   * @param y - new y position
+   */
   moveCorner(x: number, y: number) {
     if (
       isDefined(this.activeCorner.point.x) &&
@@ -207,34 +253,38 @@ export class PolygonInteraction {
     }
   }
 
+  /**
+   * Moves the line to the new x,y
+   * @param x - new x position
+   * @param y - new y position
+   */
   moveLine(x: number, y: number) {
     // subtract the active displacement of touch from the initial position
     const pointOne = this.activeLine.cornerOne.point;
     const pointTwo = this.activeLine.cornerTwo.point;
     if (
-      !this.initialTouchPosition ||
-      !isDefined(pointOne.x) ||
-      !isDefined(pointOne.y) ||
-      !isDefined(pointTwo.x) ||
-      !isDefined(pointTwo.y) ||
-      !isDefined(this.initialLineCorners.pointOne) ||
-      !isDefined(this.initialLineCorners.pointOne) ||
-      !isDefined(this.initialLineCorners.pointTwo) ||
-      !isDefined(this.initialLineCorners.pointTwo)
+      this.initialTouchPosition &&
+      isDefined(pointOne.x) &&
+      isDefined(pointOne.y) &&
+      isDefined(pointTwo.x) &&
+      isDefined(pointTwo.y) &&
+      isDefined(this.initialLineCorners.pointOne) &&
+      isDefined(this.initialLineCorners.pointOne) &&
+      isDefined(this.initialLineCorners.pointTwo) &&
+      isDefined(this.initialLineCorners.pointTwo)
     ) {
-      return;
+      const {dx, dy} = this.getDxDy(this.initialTouchPosition, new Point(x, y));
+
+      pointOne.x.current = this.initialLineCorners.pointOne.x + dx;
+      pointOne.y.current = this.initialLineCorners.pointOne.y + dy;
+
+      pointTwo.x.current = this.initialLineCorners.pointTwo.x + dx;
+      pointTwo.y.current = this.initialLineCorners.pointTwo.y + dy;
     }
-    const {dx, dy} = this.getDxDy(this.initialTouchPosition, new Point(x, y));
-
-    pointOne.x.current = this.initialLineCorners.pointOne.x + dx;
-    pointOne.y.current = this.initialLineCorners.pointOne.y + dy;
-
-    pointTwo.x.current = this.initialLineCorners.pointTwo.x + dx;
-    pointTwo.y.current = this.initialLineCorners.pointTwo.y + dy;
   }
 
   /**
-   * Detach
+   * Returns the active corner's detached values
    */
   detachCorner(): DetachedCorner {
     if (
@@ -254,6 +304,9 @@ export class PolygonInteraction {
     }
   }
 
+  /**
+   * Returns the active line's detached corners
+   */
   detachLine(): DetachedLine {
     const cornerOne = this.activeLine.cornerOne;
     const cornerTwo = this.activeLine.cornerTwo;

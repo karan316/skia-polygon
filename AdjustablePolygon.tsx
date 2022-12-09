@@ -103,15 +103,19 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   };
 
   const detach = () => {
-    if (onCornerUpdate) {
-      if (polygonInteraction.detectedCorner()) {
-        try {
-          const {point, position} = polygonInteraction.detachCorner();
-          onCornerUpdate(point, position);
-        } catch (error) {
-          console.error(error);
-        }
-      } else if (polygonInteraction.detectedLine()) {
+    if (!onCornerUpdate) {
+      console.warn('No onCornerUpdate handler passed');
+      return;
+    }
+    if (polygonInteraction.detectedCorner()) {
+      try {
+        const {point, position} = polygonInteraction.detachCorner();
+        onCornerUpdate(point, position);
+      } catch (error) {
+        console.error(error);
+      }
+    } else if (polygonInteraction.detectedLine()) {
+      try {
         const {cornerOne, cornerTwo} = polygonInteraction.detachLine();
 
         onCornerUpdate(
@@ -122,6 +126,8 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
           {x: cornerTwo.point.x, y: cornerTwo.point.y},
           cornerTwo.position,
         );
+      } catch (error) {
+        console.error(error);
       }
     }
     polygonInteraction.resetTouchPoints();

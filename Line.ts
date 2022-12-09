@@ -2,11 +2,17 @@ import {Corner, DetachedCorner} from './Corner';
 
 export type LinePosition = 'top' | 'right' | 'bottom' | 'left';
 
+/**
+ * Corners values of the detached line
+ */
 export interface DetachedLine {
   cornerOne: DetachedCorner;
   cornerTwo: DetachedCorner;
 }
 
+/**
+ * Line composed of two corners and its position
+ */
 export class Line {
   cornerOne: Corner;
   cornerTwo: Corner;
