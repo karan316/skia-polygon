@@ -26,8 +26,13 @@ const App = () => {
   };
   const {width, height} = Dimensions.get('screen');
 
-  const handleCornerUpdate: CornerUpdateHandler = (corner, position) => {
-    console.log(position, ' corner updated', corner);
+  const handleCornerUpdate: CornerUpdateHandler = corner => {
+    console.log(
+      corner.position,
+      ' corner updated',
+      corner.point.x,
+      corner.point.y,
+    );
   };
 
   return (

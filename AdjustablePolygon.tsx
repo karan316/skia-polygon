@@ -11,7 +11,7 @@ import {
 } from '@shopify/react-native-skia';
 import React from 'react';
 
-import {Corner, CornerPosition} from './Corner';
+import {Corner, DetachedCorner} from './Corner';
 import {Point} from './Point';
 import {PolygonInteraction} from './PolygonInteraction';
 
@@ -22,10 +22,7 @@ export interface InitialValues {
   bottomLeft: Point;
 }
 
-export type CornerUpdateHandler = (
-  corner: Point,
-  position: CornerPosition,
-) => void;
+export type CornerUpdateHandler = (corner: DetachedCorner) => void;
 
 interface IAdjustablePolygonProps {
   /**
@@ -85,7 +82,7 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
     // Detect if its a corner touch
     polygonInteraction.detectCorner(x, y, corners);
 
-    if (polygonInteraction.detectedCorner()) {
+    if (polygonInteraction.cornerWasDetected()) {
       return;
     }
 
@@ -95,9 +92,9 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   };
 
   const move = ({x, y}: ExtendedTouchInfo) => {
-    if (polygonInteraction.detectedCorner()) {
+    if (polygonInteraction.cornerWasDetected()) {
       polygonInteraction.moveCorner(x, y);
-    } else if (polygonInteraction.detectedLine()) {
+    } else if (polygonInteraction.lineWasDetected()) {
       polygonInteraction.moveLine(x, y);
     }
   };
@@ -107,25 +104,19 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
       console.warn('No onCornerUpdate handler passed');
       return;
     }
-    if (polygonInteraction.detectedCorner()) {
+    if (polygonInteraction.cornerWasDetected()) {
       try {
-        const {point, position} = polygonInteraction.detachCorner();
-        onCornerUpdate(point, position);
+        const corner = polygonInteraction.detachCorner();
+        onCornerUpdate(corner);
       } catch (error) {
         console.error(error);
       }
-    } else if (polygonInteraction.detectedLine()) {
+    } else if (polygonInteraction.lineWasDetected()) {
       try {
         const {cornerOne, cornerTwo} = polygonInteraction.detachLine();
 
-        onCornerUpdate(
-          {x: cornerOne.point.x, y: cornerOne.point.y},
-          cornerOne.position,
-        );
-        onCornerUpdate(
-          {x: cornerTwo.point.x, y: cornerTwo.point.y},
-          cornerTwo.position,
-        );
+        onCornerUpdate(cornerOne);
+        onCornerUpdate(cornerTwo);
       } catch (error) {
         console.error(error);
       }

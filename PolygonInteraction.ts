@@ -226,7 +226,7 @@ export class PolygonInteraction {
    * Checks if a corner was detected
    * @returns true if a corner was detected during the touch
    */
-  detectedCorner() {
+  cornerWasDetected() {
     return isDefined(this.activeCorner.position);
   }
 
@@ -234,7 +234,7 @@ export class PolygonInteraction {
    * Checks if a line was detected
    * @returns true if a line was detected during the touch
    */
-  detectedLine() {
+  lineWasDetected() {
     return isDefined(this.activeLine.position);
   }
 
