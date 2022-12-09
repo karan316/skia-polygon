@@ -1,5 +1,5 @@
-import {PolygonInteraction} from './PolygonInteraction';
-import {Point} from './Point';
+import {PolygonInteraction} from './PolygonInteraction.lib';
+import {Point} from '../Point';
 
 const polygonInteraction = new PolygonInteraction();
 

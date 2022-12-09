@@ -2,7 +2,7 @@ import {
   isDefined,
   eachItemOfArrayIsDefined,
   eachPropertyOfObjectIsDefined,
-} from './helpers';
+} from '.';
 
 describe('eachItemOfArrayIsDefined', () => {
   test('false when some values are undefined or null', () => {

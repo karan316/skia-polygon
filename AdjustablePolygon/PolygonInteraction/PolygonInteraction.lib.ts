@@ -1,7 +1,7 @@
-import {Corner, DetachedCorner} from './Corner';
-import {DetachedLine, Line} from './Line';
-import {Point} from './Point';
-import {isDefined} from './helpers';
+import {Corner, DetachedCorner} from '../Corner';
+import {DetachedLine, Line} from '../Line';
+import {Point} from '../Point';
+import {isDefined} from '../utils';
 
 export class PolygonInteraction {
   /**

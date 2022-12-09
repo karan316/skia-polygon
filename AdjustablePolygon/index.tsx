@@ -13,7 +13,7 @@ import React from 'react';
 
 import {Corner, DetachedCorner} from './Corner';
 import {Point} from './Point';
-import {PolygonInteraction} from './PolygonInteraction';
+import {PolygonInteraction} from './PolygonInteraction/PolygonInteraction.lib';
 
 export interface InitialValues {
   topRight: Point;
