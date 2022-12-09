@@ -16,10 +16,10 @@ import {Point} from './Point';
 import {PolygonInteraction} from './PolygonInteraction';
 
 export interface InitialValues {
-  topLeft: Point;
   topRight: Point;
   bottomRight: Point;
   bottomLeft: Point;
+  topLeft: Point;
 }
 
 export type CornerUpdateHandler = (corner: DetachedCorner) => void;
@@ -47,18 +47,15 @@ interface IAdjustablePolygonProps {
 
 const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   initialValues: {
-    topLeft: initialTopLeft,
     topRight: initialTopRight,
     bottomRight: initialBottomRight,
     bottomLeft: initialBottomLeft,
+    topLeft: initialTopLeft,
   },
   width,
   height,
   onCornerUpdate,
 }) => {
-  const topLeftX = useValue(initialTopLeft.x);
-  const topLeftY = useValue(initialTopLeft.y);
-
   const topRightX = useValue(initialTopRight.x);
   const topRightY = useValue(initialTopRight.y);
 
@@ -68,13 +65,16 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   const bottomLeftX = useValue(initialBottomLeft.x);
   const bottomLeftY = useValue(initialBottomLeft.y);
 
+  const topLeftX = useValue(initialTopLeft.x);
+  const topLeftY = useValue(initialTopLeft.y);
+
   const polygonInteraction = new PolygonInteraction();
 
   const currentCorners = () => [
-    new Corner(topLeftX, topLeftY, 'top-left'),
     new Corner(topRightX, topRightY, 'top-right'),
     new Corner(bottomRightX, bottomRightY, 'bottom-right'),
     new Corner(bottomLeftX, bottomLeftY, 'bottom-left'),
+    new Corner(topLeftX, topLeftY, 'top-left'),
   ];
 
   const detect = ({x, y}: TouchInfo) => {
@@ -131,21 +131,21 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   });
   const points = useComputedValue(
     () => [
-      vec(topLeftX.current, topLeftY.current),
       vec(topRightX.current, topRightY.current),
       vec(bottomRightX.current, bottomRightY.current),
       vec(bottomLeftX.current, bottomLeftY.current),
       vec(topLeftX.current, topLeftY.current),
+      vec(topRightX.current, topRightY.current),
     ],
     [
-      topLeftX,
-      topLeftY,
       topRightX,
       topRightY,
       bottomRightY,
       bottomRightY,
       bottomLeftX,
       bottomLeftY,
+      topLeftX,
+      topLeftY,
     ],
   );
 
@@ -158,10 +158,10 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
         style="stroke"
         strokeWidth={2}
       />
-      <Circle cx={topLeftX} cy={topLeftY} r={4} color={Corner.COLOR} />
       <Circle cx={topRightX} cy={topRightY} r={4} color={Corner.COLOR} />
       <Circle cx={bottomRightX} cy={bottomRightY} r={4} color={Corner.COLOR} />
       <Circle cx={bottomLeftX} cy={bottomLeftY} r={4} color={Corner.COLOR} />
+      <Circle cx={topLeftX} cy={topLeftY} r={4} color={Corner.COLOR} />
     </Canvas>
   );
 };
