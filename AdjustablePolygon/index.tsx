@@ -92,36 +92,44 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   };
 
   const move = ({x, y}: ExtendedTouchInfo) => {
-    if (polygonInteraction.cornerWasDetected()) {
-      polygonInteraction.moveCorner(x, y);
-    } else if (polygonInteraction.lineWasDetected()) {
-      polygonInteraction.moveLine(x, y);
+    try {
+      if (polygonInteraction.cornerWasDetected()) {
+        polygonInteraction.moveCorner(x, y);
+      } else if (polygonInteraction.lineWasDetected()) {
+        polygonInteraction.moveLine(x, y);
+      }
+    } catch (error) {
+      console.error('Error while moving', error);
     }
   };
 
   const detach = () => {
-    if (!onCornerUpdate) {
-      console.warn('No onCornerUpdate handler passed');
-      return;
-    }
-    if (polygonInteraction.cornerWasDetected()) {
-      try {
-        const corner = polygonInteraction.detachCorner();
-        onCornerUpdate(corner);
-      } catch (error) {
-        console.error(error);
+    try {
+      if (!onCornerUpdate) {
+        console.warn('No onCornerUpdate handler passed');
+        return;
       }
-    } else if (polygonInteraction.lineWasDetected()) {
-      try {
-        const {cornerOne, cornerTwo} = polygonInteraction.detachLine();
+      if (polygonInteraction.cornerWasDetected()) {
+        try {
+          const corner = polygonInteraction.detachCorner();
+          onCornerUpdate(corner);
+        } catch (error) {
+          console.error(error);
+        }
+      } else if (polygonInteraction.lineWasDetected()) {
+        try {
+          const {cornerOne, cornerTwo} = polygonInteraction.detachLine();
 
-        onCornerUpdate(cornerOne);
-        onCornerUpdate(cornerTwo);
-      } catch (error) {
-        console.error(error);
+          onCornerUpdate(cornerOne);
+          onCornerUpdate(cornerTwo);
+        } catch (error) {
+          console.error(error);
+        }
       }
+      polygonInteraction.resetTouchPoints();
+    } catch (error) {
+      console.log('Error while detaching', error);
     }
-    polygonInteraction.resetTouchPoints();
   };
 
   const touchHandler = useTouchHandler({

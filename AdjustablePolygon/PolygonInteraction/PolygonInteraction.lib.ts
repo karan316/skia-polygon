@@ -28,18 +28,163 @@ export class PolygonInteraction {
   };
 
   /**
+   * Max width of interaction
+   */
+  MAX_WIDTH: number;
+
+  /**
+   * Min width of interaction
+   */
+  MAX_HEIGHT: number;
+
+  /**
+   * Min angle of the polygon
+   */
+  MIN_ANGLE: number;
+
+  /**
+   * Max angle of the polygon
+   */
+  MAX_ANGLE: number;
+
+  /**
+   * Current corners snapshot at the time of detection
+   */
+  cornersSnapshot: Corner[] | null;
+
+  /**
    * Threshold for cross product to detect line touch (not pixel values)
    */
   private LINE_TOUCH_THRESHOLD = 5000;
 
-  constructor() {
+  constructor(
+    maxWidth: number = 0,
+    maxHeight: number = 0,
+    minAngle: number = Number.MAX_SAFE_INTEGER,
+    maxAngle: number = Number.MIN_SAFE_INTEGER,
+  ) {
     this.activeCorner = new Corner();
     this.activeLine = new Line();
     this.initialTouchPosition = null;
+    this.cornersSnapshot = null;
     this.initialLineCorners = {
       pointOne: null,
       pointTwo: null,
     };
+    this.MAX_WIDTH = maxWidth;
+    this.MAX_HEIGHT = maxHeight;
+    this.MAX_ANGLE = maxAngle;
+    this.MIN_ANGLE = minAngle;
+  }
+
+  /**
+   * Returns true if the current position is out of specified boundaries
+   * @param x Current X position
+   * @param y Current Y position
+   */
+  isPositionOutOfBounds(x: number, y: number) {
+    return x <= 0 || x >= this.MAX_WIDTH || y <= 0 || y >= this.MAX_HEIGHT;
+  }
+
+  /**
+   * Returns true if the angle is out of permissible range
+   * @throws Error
+   */
+  isAngleOutOfRange() {
+    if (!this.cornersSnapshot) {
+      throw new Error('No corners snapshot');
+    }
+    const [topRight, bottomRight, bottomLeft, topLeft] = this.cornersSnapshot;
+    if (
+      !isDefined(this.activeCorner.point.x) ||
+      !isDefined(this.activeCorner.point.y)
+    ) {
+      throw new Error('No active corner found');
+    }
+    if (
+      !isDefined(topRight.point.x) ||
+      !isDefined(topRight.point.y) ||
+      !isDefined(bottomRight.point.x) ||
+      !isDefined(bottomRight.point.y) ||
+      !isDefined(bottomLeft.point.x) ||
+      !isDefined(bottomLeft.point.y) ||
+      !isDefined(topLeft.point.x) ||
+      !isDefined(topLeft.point.y)
+    ) {
+      throw new Error('Undefined corners found');
+    }
+
+    let pointOne: Point | null = null;
+    let pointTwo: Point | null = null;
+
+    switch (this.activeCorner.position) {
+      case 'top-right':
+        pointOne = new Point(
+          topRight.point.x.current,
+          topRight.point.y.current,
+        );
+        pointTwo = new Point(
+          bottomRight.point.x.current,
+          bottomRight.point.y.current,
+        );
+        break;
+      case 'bottom-right':
+        pointOne = new Point(
+          topRight.point.x.current,
+          topRight.point.y.current,
+        );
+        pointTwo = new Point(
+          bottomLeft.point.x.current,
+          bottomLeft.point.y.current,
+        );
+        break;
+
+      case 'bottom-left':
+        pointOne = new Point(topLeft.point.x.current, topLeft.point.y.current);
+        pointTwo = new Point(
+          bottomRight.point.x.current,
+          bottomRight.point.y.current,
+        );
+        break;
+
+      case 'top-left':
+        pointOne = new Point(
+          topRight.point.x.current,
+          topRight.point.y.current,
+        );
+        pointTwo = new Point(
+          bottomLeft.point.x.current,
+          bottomLeft.point.y.current,
+        );
+        break;
+
+      default:
+        break;
+    }
+
+    if (!isDefined(pointOne) || !isDefined(pointTwo)) {
+      throw new Error('Could not locate the corner');
+    }
+
+    const x1 = pointOne.x - this.activeCorner.point.x.current;
+    const y1 = pointOne.y - this.activeCorner.point.y.current;
+
+    const x2 = pointTwo.x - this.activeCorner.point.x.current;
+    const y2 = pointTwo.y - this.activeCorner.point.y.current;
+
+    const yVal = x1 * y2 - x2 * y1;
+    const xVal = x1 * x2 + y1 * y2;
+
+    // atan2 has a range of -pi to pi. We take the absolute values to account for clockwise and anti-clockwise angle.
+    const angle = (Math.atan2(yVal, xVal) * 180) / Math.PI;
+
+    // absolute value of the angle forming the vectors should be between 70 to 130
+    if (angle > this.MAX_ANGLE || angle < this.MIN_ANGLE) {
+      // angle is out of range
+      return true;
+    }
+    // angle formed is within range
+    return false;
   }
 
   /**
@@ -95,6 +240,7 @@ export class PolygonInteraction {
       pointOne: null,
       pointTwo: null,
     };
+    this.cornersSnapshot = null;
   }
 
   /**
@@ -119,6 +265,7 @@ export class PolygonInteraction {
         ) <= TOUCH_AREA
       ) {
         this.activeCorner = corner;
+        this.cornersSnapshot = corners;
         return;
       }
     }
@@ -130,7 +277,7 @@ export class PolygonInteraction {
    * @returns Line[]
    */
   private currentLines(corners: Corner[]) {
-    const [topLeft, topRight, bottomRight, bottomLeft] = corners;
+    const [topRight, bottomRight, bottomLeft, topLeft] = corners;
 
     const top = new Line(topLeft, topRight, 'top');
     const right = new Line(topRight, bottomRight, 'right');
@@ -144,6 +291,7 @@ export class PolygonInteraction {
    * @param point - Point
    * @param line - Line
    * @returns true if point lies in between the line, false otherwise
+   * @throws Error
    */
   private pointInBetweenLine(point: Point, line: Line) {
     /**
@@ -165,7 +313,7 @@ export class PolygonInteraction {
       !isDefined(linePointTwoX) ||
       !isDefined(linePointTwoY)
     ) {
-      return false;
+      throw new Error('Line points are undefined');
     }
 
     const dX = point.x - linePointOneX;
@@ -205,19 +353,23 @@ export class PolygonInteraction {
     const point = new Point(x, y);
 
     for (let line of [top, right, bottom, left]) {
-      if (this.pointInBetweenLine(point, line)) {
-        this.activeLine = line;
-        this.initialLineCorners = {
-          pointOne: {
-            x: line.cornerOne.point.x?.current ?? 0,
-            y: line.cornerOne.point.y?.current ?? 0,
-          },
-          pointTwo: {
-            x: line.cornerTwo.point.x?.current ?? 0,
-            y: line.cornerTwo.point.y?.current ?? 0,
-          },
-        };
-        return;
+      try {
+        if (this.pointInBetweenLine(point, line)) {
+          this.activeLine = line;
+          this.initialLineCorners = {
+            pointOne: {
+              x: line.cornerOne.point.x?.current ?? 0,
+              y: line.cornerOne.point.y?.current ?? 0,
+            },
+            pointTwo: {
+              x: line.cornerTwo.point.x?.current ?? 0,
+              y: line.cornerTwo.point.y?.current ?? 0,
+            },
+          };
+          return;
+        }
+      } catch (error) {
+        console.error('Error while detecting line', error);
       }
     }
   }
@@ -242,14 +394,20 @@ export class PolygonInteraction {
    * Moves the active corner to x,y
    * @param x - new x position
    * @param y - new y position
+   * @throws Error
    */
   moveCorner(x: number, y: number) {
     if (
       isDefined(this.activeCorner.point.x) &&
       isDefined(this.activeCorner.point.y)
     ) {
+      // if (this.isPositionOutOfBounds(x, y)) {
+      //   return;
+      // }
       this.activeCorner.point.x.current = x;
       this.activeCorner.point.y.current = y;
+    } else {
+      throw new Error('No active corner while moving');
     }
   }
 
@@ -257,34 +415,47 @@ export class PolygonInteraction {
    * Moves the line to the new x,y
    * @param x - new x position
    * @param y - new y position
+   * @throws Error
    */
   moveLine(x: number, y: number) {
     // subtract the active displacement of touch from the initial position
     const pointOne = this.activeLine.cornerOne.point;
     const pointTwo = this.activeLine.cornerTwo.point;
-    if (
-      this.initialTouchPosition &&
-      isDefined(pointOne.x) &&
-      isDefined(pointOne.y) &&
-      isDefined(pointTwo.x) &&
-      isDefined(pointTwo.y) &&
-      isDefined(this.initialLineCorners.pointOne) &&
-      isDefined(this.initialLineCorners.pointOne) &&
-      isDefined(this.initialLineCorners.pointTwo) &&
-      isDefined(this.initialLineCorners.pointTwo)
-    ) {
-      const {dx, dy} = this.getDxDy(this.initialTouchPosition, new Point(x, y));
 
-      pointOne.x.current = this.initialLineCorners.pointOne.x + dx;
-      pointOne.y.current = this.initialLineCorners.pointOne.y + dy;
-
-      pointTwo.x.current = this.initialLineCorners.pointTwo.x + dx;
-      pointTwo.y.current = this.initialLineCorners.pointTwo.y + dy;
+    if (!isDefined(this.initialTouchPosition)) {
+      throw new Error('No initial touch position');
     }
+
+    if (
+      !isDefined(pointOne.x) ||
+      !isDefined(pointOne.y) ||
+      !isDefined(pointTwo.x) ||
+      !isDefined(pointTwo.y)
+    ) {
+      throw new Error('One of the corner points of the line was not defined');
+    }
+
+    if (
+      !isDefined(this.initialLineCorners.pointOne) ||
+      !isDefined(this.initialLineCorners.pointOne) ||
+      !isDefined(this.initialLineCorners.pointTwo) ||
+      !isDefined(this.initialLineCorners.pointTwo)
+    ) {
+      throw new Error('Initial position of corners was not available');
+    }
+
+    const {dx, dy} = this.getDxDy(this.initialTouchPosition, new Point(x, y));
+
+    pointOne.x.current = this.initialLineCorners.pointOne.x + dx;
+    pointOne.y.current = this.initialLineCorners.pointOne.y + dy;
+
+    pointTwo.x.current = this.initialLineCorners.pointTwo.x + dx;
+    pointTwo.y.current = this.initialLineCorners.pointTwo.y + dy;
   }
 
   /**
    * Returns the active corner's detached values
+   * @throws Error
    */
   detachCorner(): DetachedCorner {
     if (
@@ -300,12 +471,13 @@ export class PolygonInteraction {
         position: this.activeCorner.position,
       };
     } else {
-      throw new Error('Not a valid active corner to detach');
+      throw new Error('No valid active corner to detach');
     }
   }
 
   /**
    * Returns the active line's detached corners
+   * @throws Error
    */
   detachLine(): DetachedLine {
     const cornerOne = this.activeLine.cornerOne;
