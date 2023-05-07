@@ -10,6 +10,7 @@ import {
   vec,
 } from '@shopify/react-native-skia';
 import React from 'react';
+import {View} from 'react-native';
 
 import {Corner, DetachedCorner} from './Corner';
 import {Point} from './Point';
@@ -68,7 +69,7 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
   const topLeftX = useValue(initialTopLeft.x);
   const topLeftY = useValue(initialTopLeft.y);
 
-  const polygonInteraction = new PolygonInteraction();
+  const polygonInteraction = new PolygonInteraction(width, height);
 
   const currentCorners = () => [
     new Corner(topRightX, topRightY, 'top-right'),
@@ -83,6 +84,7 @@ const AdjustablePolygon: React.FC<IAdjustablePolygonProps> = ({
     polygonInteraction.detectCorner(x, y, corners);
 
     if (polygonInteraction.cornerWasDetected()) {
+      // we can return since we already detected a corner. No need to detect a line.
       return;
     }
 

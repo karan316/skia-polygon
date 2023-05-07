@@ -1,4 +1,4 @@
-import {Corner, DetachedCorner} from '../Corner';
+import {Corner, CornerPosition, DetachedCorner} from '../Corner';
 import {DetachedLine, Line} from '../Line';
 import {Point} from '../Point';
 import {isDefined} from '../utils';
@@ -60,8 +60,8 @@ export class PolygonInteraction {
   constructor(
     maxWidth: number = 0,
     maxHeight: number = 0,
-    minAngle: number = Number.MAX_SAFE_INTEGER,
-    maxAngle: number = Number.MIN_SAFE_INTEGER,
+    minAngle: number = 60,
+    maxAngle: number = 150,
   ) {
     this.activeCorner = new Corner();
     this.activeLine = new Line();
@@ -86,18 +86,43 @@ export class PolygonInteraction {
     return x <= 0 || x >= this.MAX_WIDTH || y <= 0 || y >= this.MAX_HEIGHT;
   }
 
+  angleBetweenPoints(ref: Point, p1: Point, p2: Point) {
+    const x1 = p1.x - ref.x;
+    const y1 = p1.y - ref.y;
+
+    const x2 = p2.x - ref.x;
+    const y2 = p2.y - ref.y;
+
+    const yVal = x1 * y2 - x2 * y1;
+    const xVal = x1 * x2 + y1 * y2;
+
+    // atan2 has a range of -pi to pi.
+    const angle = (Math.atan2(yVal, xVal) * 180) / Math.PI;
+    console.log('ANGLE: ', angle, ref, p1, p2);
+    return angle;
+  }
+
   /**
    * Returns true if the angle is out of permissible range
    * @throws Error
    */
-  isAngleOutOfRange() {
+  isAngleOutOfRange({x, y}: Point, position: CornerPosition) {
+    const updatingCorner: DetachedCorner = {
+      point: {
+        x,
+        y,
+      },
+      position,
+    };
+
+    console.log('updating corner', updatingCorner);
     if (!this.cornersSnapshot) {
       throw new Error('No corners snapshot');
     }
     const [topRight, bottomRight, bottomLeft, topLeft] = this.cornersSnapshot;
     if (
-      !isDefined(this.activeCorner.point.x) ||
-      !isDefined(this.activeCorner.point.y)
+      !isDefined(updatingCorner.point.x) ||
+      !isDefined(updatingCorner.point.y)
     ) {
       throw new Error('No active corner found');
     }
@@ -117,7 +142,7 @@ export class PolygonInteraction {
     let pointOne: Point | null = null;
     let pointTwo: Point | null = null;
 
-    switch (this.activeCorner.position) {
+    switch (updatingCorner.position) {
       case 'top-right':
         pointOne = new Point(
           topRight.point.x.current,
@@ -166,19 +191,24 @@ export class PolygonInteraction {
       throw new Error('Could not locate the corner');
     }
 
-    const x1 = pointOne.x - this.activeCorner.point.x.current;
-    const y1 = pointOne.y - this.activeCorner.point.y.current;
+    // const x1 = pointOne.x - updatingCorner.point.x;
+    // const y1 = pointOne.y - updatingCorner.point.y;
 
-    const x2 = pointTwo.x - this.activeCorner.point.x.current;
-    const y2 = pointTwo.y - this.activeCorner.point.y.current;
+    // const x2 = pointTwo.x - updatingCorner.point.x;
+    // const y2 = pointTwo.y - updatingCorner.point.y;
 
-    const yVal = x1 * y2 - x2 * y1;
-    const xVal = x1 * x2 + y1 * y2;
+    // const yVal = x1 * y2 - x2 * y1;
+    // const xVal = x1 * x2 + y1 * y2;
 
-    // atan2 has a range of -pi to pi. We take the absolute values to account for clockwise and anti-clockwise angle.
-    const angle = (Math.atan2(yVal, xVal) * 180) / Math.PI;
+    // // atan2 has a range of -pi to pi. We take the absolute values to account for clockwise and anti-clockwise angle.
+    // const angle = (Math.atan2(yVal, xVal) * 180) / Math.PI;
 
-    // absolute value of the angle forming the vectors should be between 70 to 130
+    const angle = this.angleBetweenPoints(
+      new Point(updatingCorner.point.x, updatingCorner.point.y),
+      pointOne,
+      pointTwo,
+    );
+
     if (angle > this.MAX_ANGLE || angle < this.MIN_ANGLE) {
       // angle is out of range
       return true;
@@ -401,9 +431,17 @@ export class PolygonInteraction {
       isDefined(this.activeCorner.point.x) &&
       isDefined(this.activeCorner.point.y)
     ) {
-      // if (this.isPositionOutOfBounds(x, y)) {
-      //   return;
-      // }
+      if (this.isPositionOutOfBounds(x, y)) {
+        return;
+      }
+
+      if (
+        this.activeCorner?.position &&
+        this.isAngleOutOfRange({x, y}, this.activeCorner.position)
+      ) {
+        return;
+      }
+      // Moves the corner to the new position
       this.activeCorner.point.x.current = x;
       this.activeCorner.point.y.current = y;
     } else {
